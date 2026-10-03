@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+*/node_modules/
+
+# env
+.env
+*.env
+!.env.example
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# builds
+web/dist/
+mobile/.expo/
+mobile/dist/
+mobile/android/
+mobile/ios/
+
+# os
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/
+
+# local data
+data/npm-cache/

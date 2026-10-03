@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Karmamitra",
+    "slug": "karmamitra",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "karmamitra",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.karmamitra.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#1d4ed8"
+      },
+      "permissions": [
+        "INTERNET"
+      ]
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.karmamitra.app"
+    },
+    "extra": {
+      "apiUrl": ""
+    },
+    "plugins": [
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1d4ed8",
+          "resizeMode": "contain"
+        }
+      ]
+    ]
+  }
+}
