@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import client, { errorMessage } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -8,7 +8,7 @@ import { colors, radius, spacing } from '../theme';
 import { formatMoney, isPayoutDay, toDateInput, weekdayName } from '../utils/format';
 
 export default function DashboardScreen() {
-  const { user, logout, deleteAccount } = useAuth();
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -58,33 +58,6 @@ export default function DashboardScreen() {
           <Text style={styles.date}>
             {weekdayName(date)}, {date}
           </Text>
-        </View>
-        <View style={{ gap: 6 }}>
-          <Button title="Log out" variant="ghost" onPress={logout} />
-          <Button
-            title="Delete account"
-            variant="danger"
-            onPress={() =>
-              Alert.alert(
-                'Delete account?',
-                'This removes your sites, workers, attendance, payments and dispatches. Cannot be undone.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete everything',
-                    style: 'destructive',
-                    onPress: async () => {
-                      try {
-                        await deleteAccount();
-                      } catch (err) {
-                        setError(errorMessage(err));
-                      }
-                    },
-                  },
-                ]
-              )
-            }
-          />
         </View>
       </View>
 
