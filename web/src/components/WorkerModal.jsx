@@ -6,7 +6,6 @@ const EMPTY = {
   phone: '',
   role: 'Mason',
   dailyWage: 500,
-  site: '',
   address: '',
   idNumber: '',
   notes: '',
@@ -15,17 +14,9 @@ const EMPTY = {
 
 const ROLES = ['Mason', 'Helper', 'Carpenter', 'Painter', 'Plumber', 'Electrician', 'Other'];
 
-export default function WorkerModal({ worker, sites, onClose, onSubmit }) {
+export default function WorkerModal({ worker, onClose, onSubmit }) {
   const isEdit = Boolean(worker?._id);
-  const [form, setForm] = useState(
-    isEdit
-      ? {
-          ...EMPTY,
-          ...worker,
-          site: worker.site?._id || worker.site || '',
-        }
-      : EMPTY
-  );
+  const [form, setForm] = useState(isEdit ? { ...EMPTY, ...worker } : EMPTY);
   const [busy, setBusy] = useState(false);
 
   const update = (key) => (e) => setForm({ ...form, [key]: e.target.value });
@@ -34,10 +25,11 @@ export default function WorkerModal({ worker, sites, onClose, onSubmit }) {
     e.preventDefault();
     setBusy(true);
     try {
+      const { site: _drop, ...rest } = form;
       await onSubmit({
-        ...form,
+        ...rest,
         dailyWage: Number(form.dailyWage) || 0,
-        site: form.site || null,
+        site: null,
       });
     } finally {
       setBusy(false);
@@ -93,18 +85,6 @@ export default function WorkerModal({ worker, sites, onClose, onSubmit }) {
             />
           </label>
         </div>
-
-        <label className="field">
-          <span>Site</span>
-          <select value={form.site} onChange={update('site')}>
-            <option value="">Not assigned</option>
-            {sites.map((s) => (
-              <option key={s._id} value={s._id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
 
         <div className="form-row">
           <label className="field">

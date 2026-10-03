@@ -60,7 +60,7 @@ export default function ReportsScreen() {
       setError('The start date must be on or before the end date.');
       return;
     }
-    setFilters({ from, to, site });
+    setFilters({ from, to, site: site || undefined });
   };
 
   const setQuickRange = (days) => {
@@ -68,7 +68,12 @@ export default function ReportsScreen() {
     const start = addDays(end, -days + 1);
     setFrom(start);
     setTo(end);
-    setFilters({ from: start, to: end, site });
+    setFilters({ from: start, to: end, site: site || undefined });
+  };
+
+  const selectSite = (id) => {
+    setSite(id);
+    setFilters((f) => ({ ...f, site: id || undefined }));
   };
 
   return (
@@ -88,13 +93,13 @@ export default function ReportsScreen() {
 
         <Text style={styles.label}>Site</Text>
         <View style={styles.sites}>
-          <Pressable onPress={() => setSite('')} style={[styles.siteChip, !site && styles.siteChipActive]}>
+          <Pressable onPress={() => selectSite('')} style={[styles.siteChip, !site && styles.siteChipActive]}>
             <Text style={[styles.siteText, !site && styles.siteTextActive]}>All sites</Text>
           </Pressable>
           {sites.map((item) => (
             <Pressable
               key={item._id}
-              onPress={() => setSite(item._id)}
+              onPress={() => selectSite(item._id)}
               style={[styles.siteChip, site === item._id && styles.siteChipActive]}
             >
               <Text style={[styles.siteText, site === item._id && styles.siteTextActive]}>{item.name}</Text>

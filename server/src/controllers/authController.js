@@ -45,4 +45,31 @@ const me = asyncHandler(async (req, res) => {
   return res.json({ user: req.user.toSafeJSON() });
 });
 
-module.exports = { register, login, me };
+/**
+ * DELETE /api/auth/account
+ * Deletes the account AND every record it owns (sites, workers, attendance,
+ * payments, dispatches). Cannot be undone.
+ */
+const deleteAccount = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const Worker = require('../models/Worker');
+  const Site = require('../models/Site');
+  const Attendance = require('../models/Attendance');
+  const Payment = require('../models/Payment');
+  const WorkAssignment = require('../models/WorkAssignment');
+
+  const workerIds = await Worker.find({ createdBy: userId }).distinct('_id');
+
+  await Promise.all([
+    Attendance.deleteMany({ worker: { $in: workerIds } }),
+    Payment.deleteMany({ createdBy: userId }),
+    WorkAssignment.deleteMany({ createdBy: userId }),
+    Worker.deleteMany({ createdBy: userId }),
+    Site.deleteMany({ createdBy: userId }),
+  ]);
+
+  await User.deleteOne({ _id: userId });
+  return res.json({ message: 'Account and all its sites, workers and records deleted.' });
+});
+
+module.exports = { register, login, me, deleteAccount };

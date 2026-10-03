@@ -40,10 +40,31 @@ const getDues = asyncHandler(async (req, res) => {
   ]);
 
   const workerIds = grouped.map((g) => g._id);
-  const workerFilter = { _id: { $in: workerIds }, createdBy: req.user._id };
-  if (req.query.site) workerFilter.site = req.query.site;
-  const workers = await Worker.find(workerFilter).populate('site', 'name').lean();
+  const workers = await Worker.find({ _id: { $in: workerIds }, createdBy: req.user._id }).populate('site', 'name').lean();
   const workerMap = workers.reduce((acc, w) => ({ ...acc, [String(w._id)]: w }), {});
+
+  // Per-day worked-site breakdown (date + site name + wage) so the UI can
+  // show exactly where each worker earned their dues.
+  const dayRows = await Attendance.find({
+    worker: { $in: workerIds },
+    paidInPayment: null,
+    date: { $lte: to },
+    ...(req.query.site ? { site: new mongoose.Types.ObjectId(req.query.site) } : {}),
+  })
+    .populate('site', 'name')
+    .select('worker date status wageAmount site')
+    .sort({ date: 1 })
+    .lean();
+  const sitesByWorker = dayRows.reduce((acc, row) => {
+    const key = String(row.worker);
+    (acc[key] = acc[key] || []).push({
+      date: row.date,
+      status: row.status,
+      wageAmount: row.wageAmount,
+      site: row.site ? { _id: String(row.site._id), name: row.site.name } : null,
+    });
+    return acc;
+  }, {});
 
   const rows = grouped
     .filter((g) => workerMap[String(g._id)])
@@ -56,6 +77,7 @@ const getDues = asyncHandler(async (req, res) => {
       toDate: g.toDate,
       attendanceCount: g.attendanceIds.length,
       attendanceIds: g.attendanceIds,
+      dayBreakdown: sitesByWorker[String(g._id)] || [],
     }))
     .sort((a, b) => a.worker.name.localeCompare(b.worker.name));
 
@@ -126,7 +148,7 @@ const createPayment = asyncHandler(async (req, res) => {
 /**
  * GET /api/payments?worker=&status=&from=&to=&site=
  */
-const listPayments = asyncHandler(async (req, res) => {
+    const listPayments = asyncHandler(async (req, res) => {
   const { worker, status, from, to, site } = req.query;
   const filter = { createdBy: req.user._id };
   if (worker) filter.worker = worker;
@@ -143,14 +165,21 @@ const listPayments = asyncHandler(async (req, res) => {
   }
 
   if (site) {
-    const siteExists = await Site.exists({ _id: site, createdBy: req.user._id });
-    if (!siteExists) return res.status(404).json({ message: 'Site not found' });
-    const workerIds = await Worker.find({ site, createdBy: req.user._id }).distinct('_id');
-    filter.worker = { $in: workerIds };
+    if (!mongoose.isValidObjectId(site)) {
+      return res.status(400).json({ message: 'Invalid site filter.' });
+    }
+    // Filter by the site(s) actually worked (attendance rows), not the
+    // worker's home site — home site was removed from the worker flow.
+    const workedIds = await Attendance.distinct('worker', {
+      site: new mongoose.Types.ObjectId(site),
+      worker: { $in: await getOwnedWorkerIds(req.user._id) },
+    });
+    filter.worker = { $in: workedIds };
   }
 
   const payments = await Payment.find(filter)
     .populate('worker', 'name role phone site')
+    .populate({ path: 'attendance', select: 'date status wageRate wageAmount site', populate: { path: 'site', select: 'name' } })
     .sort({ paidAt: -1 });
   return res.json(payments);
 });
@@ -161,7 +190,7 @@ const listPayments = asyncHandler(async (req, res) => {
 const getPayment = asyncHandler(async (req, res) => {
   const payment = await Payment.findOne({ _id: req.params.id, createdBy: req.user._id })
     .populate('worker', 'name role phone site dailyWage')
-    .populate('attendance', 'date status wageRate wageAmount');
+    .populate({ path: 'attendance', select: 'date status wageRate wageAmount site', populate: { path: 'site', select: 'name' } });
   if (!payment) return res.status(404).json({ message: 'Payment not found' });
   return res.json(payment);
 });

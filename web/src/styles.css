@@ -216,6 +216,79 @@ input:focus, select:focus, textarea:focus {
 }
 .filter-bar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 16px; }
 .filter-bar .field { max-width: 200px; }
+.dispatch-worker-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+.dispatch-worker-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+}
+.dispatch-worker-option:hover {
+  border-color: #9aaedb;
+  box-shadow: var(--shadow);
+}
+.dispatch-worker-option.selected {
+  border-color: var(--primary);
+  background: #f1f5ff;
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.08);
+}
+.dispatch-worker-checkbox {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+.dispatch-worker-checkbox:focus-visible + .dispatch-worker-checkmark {
+  outline: 3px solid rgba(29, 78, 216, 0.3);
+  outline-offset: 3px;
+}
+.dispatch-worker-checkmark {
+  display: grid;
+  place-items: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid #aeb9ca;
+  border-radius: 6px;
+  background: #fff;
+}
+.dispatch-worker-checkbox:checked + .dispatch-worker-checkmark {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+.dispatch-worker-checkbox:checked + .dispatch-worker-checkmark::after {
+  content: '';
+  width: 9px;
+  height: 5px;
+  border: solid #fff;
+  border-width: 0 0 2px 2px;
+  transform: translateY(-1px) rotate(-45deg);
+}
+.dispatch-worker-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dispatch-worker-info > span {
+  color: var(--muted);
+  font-size: 13px;
+}
 
 /* ---------- Badges ---------- */
 .badge {

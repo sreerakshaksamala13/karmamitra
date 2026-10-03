@@ -5,14 +5,13 @@ import { colors, radius, spacing } from '../theme';
 
 const ROLES = ['Mason', 'Helper', 'Carpenter', 'Painter', 'Plumber', 'Electrician', 'Other'];
 
-export default function WorkerModal({ visible, worker, sites, onClose, onSubmit }) {
+export default function WorkerModal({ visible, worker, onClose, onSubmit }) {
   const isEdit = Boolean(worker?._id);
   const [form, setForm] = useState({
     name: worker?.name || '',
     phone: worker?.phone || '',
     role: worker?.role || 'Mason',
     dailyWage: String(worker?.dailyWage ?? 500),
-    site: worker?.site?._id || worker?.site || '',
     address: worker?.address || '',
     idNumber: worker?.idNumber || '',
     notes: worker?.notes || '',
@@ -34,7 +33,7 @@ export default function WorkerModal({ visible, worker, sites, onClose, onSubmit 
       await onSubmit({
         ...form,
         dailyWage: Number(form.dailyWage) || 0,
-        site: form.site || null,
+        site: null,
       });
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Could not save');
@@ -64,27 +63,6 @@ export default function WorkerModal({ visible, worker, sites, onClose, onSubmit 
                   style={[styles.chip, form.role === r && styles.chipActive]}
                 >
                   <Text style={[styles.chipText, form.role === r && styles.chipTextActive]}>{r}</Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Text style={[styles.label, { marginTop: spacing.md }]}>Site</Text>
-            <View style={styles.chips}>
-              <Pressable
-                onPress={() => set('site')('')}
-                style={[styles.chip, !form.site && styles.chipActive]}
-              >
-                <Text style={[styles.chipText, !form.site && styles.chipTextActive]}>None</Text>
-              </Pressable>
-              {sites.map((s) => (
-                <Pressable
-                  key={s._id}
-                  onPress={() => set('site')(s._id)}
-                  style={[styles.chip, form.site === s._id && styles.chipActive]}
-                >
-                  <Text style={[styles.chipText, form.site === s._id && styles.chipTextActive]}>
-                    {s.name}
-                  </Text>
                 </Pressable>
               ))}
             </View>

@@ -9,16 +9,11 @@ import { formatMoney } from '../utils/format';
 
 export default function WorkersScreen() {
   const [workers, setWorkers] = useState([]);
-  const [sites, setSites] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [modal, setModal] = useState(null);
-
-  useEffect(() => {
-    client.get('/sites').then((res) => setSites(res.data)).catch(() => {});
-  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -131,7 +126,7 @@ export default function WorkersScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name}>{w.name}</Text>
                   <Text style={styles.meta}>
-                    {w.role} · {w.site?.name || 'No site'} · {formatMoney(w.dailyWage)}/day
+                    {w.role} · {formatMoney(w.dailyWage)}/day
                   </Text>
                   {w.phone ? <Text style={styles.meta}>{w.phone}</Text> : null}
                 </View>
@@ -158,7 +153,6 @@ export default function WorkersScreen() {
         <WorkerModal
           visible
           worker={modal._id ? modal : null}
-          sites={sites}
           onClose={() => setModal(null)}
           onSubmit={submit}
         />

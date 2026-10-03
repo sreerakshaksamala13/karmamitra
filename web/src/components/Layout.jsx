@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 const LINKS = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/attendance', label: 'Attendance' },
+  { to: '/dispatches', label: 'Dispatch' },
   { to: '/payments', label: 'Payments' },
   { to: '/workers', label: 'Workers' },
   { to: '/sites', label: 'Sites' },
@@ -11,12 +12,26 @@ const LINKS = [
 ];
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleDeleteAccount = async () => {
+    // eslint-disable-next-line no-alert
+    if (!window.confirm('Delete your account? This removes your sites, workers, attendance, payments and dispatches. Cannot be undone.')) return;
+    // eslint-disable-next-line no-alert
+    if (!window.confirm('Really delete everything? Last chance.')) return;
+    try {
+      await deleteAccount();
+      navigate('/login');
+    } catch (err) {
+      // eslint-disable-next-line no-alert
+      window.alert(err?.response?.data?.message || 'Could not delete account.');
+    }
   };
 
   return (
@@ -45,6 +60,9 @@ export default function Layout() {
           <span>{user?.name}</span>
           <button type="button" className="btn btn-ghost" onClick={handleLogout}>
             Log out
+          </button>
+          <button type="button" className="btn btn-ghost" style={{ color: '#b91c1c' }} onClick={handleDeleteAccount} title="Delete account and all data">
+            Delete account
           </button>
         </div>
       </header>

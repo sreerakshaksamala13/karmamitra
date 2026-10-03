@@ -6,6 +6,7 @@ const siteRoutes = require('./siteRoutes');
 const attendanceRoutes = require('./attendanceRoutes');
 const paymentRoutes = require('./paymentRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
+const workAssignmentRoutes = require('./workAssignmentRoutes');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -17,6 +18,7 @@ router.use('/dashboard', requireAuth, dashboardRoutes);
 router.use('/workers', requireAuth, workerRoutes);
 router.use('/sites', requireAuth, siteRoutes);
 router.use('/attendance', requireAuth, attendanceRoutes);
+router.use('/assignments', requireAuth, workAssignmentRoutes);
 router.use('/payments', requireAuth, paymentRoutes);
 
 module.exports = router;

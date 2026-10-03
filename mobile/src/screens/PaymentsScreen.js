@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import client, { errorMessage } from '../api/client';
 import { Button, Card, EmptyState, ErrorText, Loading, StatCard, SuccessText } from '../components/UI';
 import PaymentModal from '../components/PaymentModal';
-import { colors, spacing } from '../theme';
+import { colors, radius, spacing } from '../theme';
 import { formatMoney, isPayoutDay, prettyDate, toDateInput } from '../utils/format';
 
 export default function PaymentsScreen() {
   const [tab, setTab] = useState('dues');
   const [toDate] = useState(toDateInput());
+  const [site, setSite] = useState('');
+  const [sites, setSites] = useState([]);
   const [dues, setDues] = useState({ rows: [], totalDue: 0 });
   const [payments, setPayments] = useState([]);
   const [loadingDues, setLoadingDues] = useState(true);
@@ -18,29 +20,33 @@ export default function PaymentsScreen() {
   const [message, setMessage] = useState('');
   const [modal, setModal] = useState(null);
 
+  useEffect(() => {
+    client.get('/sites').then((res) => setSites(res.data)).catch(() => {});
+  }, []);
+
   const loadDues = useCallback(async () => {
     setLoadingDues(true);
     try {
-      const res = await client.get('/payments/dues', { params: { to: toDate } });
+      const res = await client.get('/payments/dues', { params: { to: toDate, site: site || undefined } });
       setDues(res.data);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoadingDues(false);
     }
-  }, [toDate]);
+  }, [toDate, site]);
 
   const loadPayments = useCallback(async () => {
     setLoadingPayments(true);
     try {
-      const res = await client.get('/payments');
+      const res = await client.get('/payments', { params: { site: site || undefined } });
       setPayments(res.data);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoadingPayments(false);
     }
-  }, []);
+  }, [site]);
 
   useEffect(() => {
     loadDues();
@@ -73,6 +79,22 @@ export default function PaymentsScreen() {
     flash('Payment updated.');
     loadDues();
     loadPayments();
+  };
+
+  const daySitesText = (row) => {
+    const names = (row.dayBreakdown || []).map((d) => d.site?.name).filter(Boolean);
+    const unique = [...new Set(names)];
+    if (unique.length) return unique.join(', ');
+    return row.worker?.site?.name || '—';
+  };
+
+  const workedSitesText = (p) => {
+    const names = (p.attendance || [])
+      .map((a) => a.site?.name)
+      .filter(Boolean);
+    const unique = [...new Set(names)];
+    if (unique.length) return unique.join(', ');
+    return p.worker?.site?.name || '—';
   };
 
   const reverse = (payment) => {
@@ -130,6 +152,19 @@ export default function PaymentsScreen() {
         <ErrorText>{error}</ErrorText>
         <SuccessText>{message}</SuccessText>
 
+        <Text style={styles.label}>Site</Text>
+        <View style={styles.sites}>
+          <Pressable onPress={() => setSite('')} style={[styles.siteChip, !site && styles.siteChipActive]}>
+            <Text style={[styles.siteText, !site && styles.siteTextActive]}>All sites</Text>
+          </Pressable>
+          {sites.map((s) => (
+            <Pressable key={s._id} onPress={() => setSite(s._id)} style={[styles.siteChip, site === s._id && styles.siteChipActive]}>
+              <Text style={[styles.siteText, site === s._id && styles.siteTextActive]}>{s.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <View style={{ height: spacing.md }} />
+
         {tab === 'dues' && (
           <>
             <StatCard label="Total outstanding" value={formatMoney(dues.totalDue)} tone="amber" />
@@ -146,6 +181,9 @@ export default function PaymentsScreen() {
                       <Text style={styles.name}>{row.worker.name}</Text>
                       <Text style={styles.meta}>
                         {row.attendanceCount} day(s) · {row.fromDate} → {row.toDate}
+                      </Text>
+                      <Text style={styles.meta}>
+                        Worked at: {daySitesText(row)}
                       </Text>
                     </View>
                     <Text style={styles.amount}>{formatMoney(row.grossAmount)}</Text>
@@ -175,6 +213,9 @@ export default function PaymentsScreen() {
                       <Text style={styles.name}>{p.worker?.name || 'Removed'}</Text>
                       <Text style={styles.meta}>
                         {p.fromDate} → {p.toDate} · {p.method} · {prettyDate(p.paidAt)}
+                      </Text>
+                      <Text style={styles.meta}>
+                        Worked at: {workedSitesText(p)}
                       </Text>
                     </View>
                     <Text style={styles.amount}>{formatMoney(p.netAmount)}</Text>
@@ -218,6 +259,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   tabs: { flexDirection: 'row', marginBottom: spacing.md },
+  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
+  sites: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  siteChip: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  siteChipActive: { borderColor: colors.primary, backgroundColor: '#e5edff' },
+  siteText: { color: colors.muted, fontWeight: '600', fontSize: 13 },
+  siteTextActive: { color: colors.primary },
   payout: { backgroundColor: '#eff6ff', borderColor: '#bfdbfe', marginBottom: spacing.md },
   payoutTitle: { fontWeight: '800', color: colors.primaryDark, marginBottom: 4 },
   payoutText: { color: colors.primaryDark, fontSize: 13 },

@@ -1,5 +1,6 @@
 const Site = require('../models/Site');
 const Worker = require('../models/Worker');
+const WorkAssignment = require('../models/WorkAssignment');
 const asyncHandler = require('../utils/asyncHandler');
 
 const ownerFilter = (req) => ({ createdBy: req.user._id });
@@ -75,16 +76,24 @@ const deleteSite = asyncHandler(async (req, res) => {
   if (!site) return res.status(404).json({ message: 'Site not found' });
 
   const workerFilter = { site: req.params.id, ...ownerFilter(req) };
-  const workerCount = await Worker.countDocuments(workerFilter);
-  if (workerCount && req.query.force !== 'true') {
+  const [workerCount, assignmentCount] = await Promise.all([
+    Worker.countDocuments(workerFilter),
+    WorkAssignment.countDocuments({ site: req.params.id, ...ownerFilter(req) }),
+  ]);
+  if ((workerCount || assignmentCount) && req.query.force !== 'true') {
     return res.status(409).json({
-      message: `This site still has ${workerCount} worker(s) assigned. Reassign them first or pass force=true.`,
+      message: `This site has ${workerCount} worker(s) assigned and ${assignmentCount} dispatch record(s). Reassign workers first or pass force=true to remove the site.`,
       workerCount,
+      assignmentCount,
     });
   }
 
   if (req.query.force === 'true') {
     await Worker.updateMany(workerFilter, { site: null });
+    await WorkAssignment.updateMany(
+      { site: req.params.id, ...ownerFilter(req) },
+      { site: null }
+    );
   }
 
   await site.deleteOne();

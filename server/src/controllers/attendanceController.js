@@ -39,32 +39,34 @@ const getDailySheet = asyncHandler(async (req, res) => {
   assertDate(date);
 
   const workerFilter = { active: true, createdBy: req.user._id };
-  if (req.query.site) workerFilter.site = req.query.site;
-
   const workers = await Worker.find(workerFilter)
     .populate('site', 'name location')
     .sort({ name: 1 })
     .lean();
 
-  const existing = await Attendance.find({ date, worker: { $in: workers.map((w) => w._id) } });
+  const existing = await Attendance.find({ date, worker: { $in: workers.map((w) => w._id) } })
+    .populate('site', 'name location');
   const byWorker = existing.reduce((acc, a) => ({ ...acc, [String(a.worker)]: a }), {});
 
-  const rows = workers.map((w) => {
-    const record = byWorker[String(w._id)];
-    return {
-      worker: {
-        _id: w._id,
-        name: w.name,
-        role: w.role,
-        dailyWage: w.dailyWage,
-        site: w.site,
-      },
-      attendance: record || null,
-      status: record ? record.status : 'present',
-      wageRate: record ? record.wageRate : w.dailyWage,
-      marked: Boolean(record),
-    };
-  });
+  const rows = workers
+    .map((w) => {
+      const record = byWorker[String(w._id)];
+      const attendanceSite = record?.site || w.site;
+      return {
+        worker: {
+          _id: w._id,
+          name: w.name,
+          role: w.role,
+          dailyWage: w.dailyWage,
+          site: attendanceSite,
+        },
+        attendance: record || null,
+        status: record ? record.status : 'present',
+        wageRate: record ? record.wageRate : w.dailyWage,
+        marked: Boolean(record),
+      };
+    })
+    .filter((row) => !req.query.site || String(row.worker.site?._id || '') === req.query.site);
 
   const summary = {
     date,

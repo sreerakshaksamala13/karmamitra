@@ -6,18 +6,12 @@ import { formatMoney } from '../utils/format';
 
 export default function Workers() {
   const [workers, setWorkers] = useState([]);
-  const [sites, setSites] = useState([]);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
-  const [siteFilter, setSiteFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [modal, setModal] = useState(null); // worker or {} for new
-
-  useEffect(() => {
-    client.get('/sites').then((res) => setSites(res.data)).catch(() => {});
-  }, []);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -26,13 +20,12 @@ export default function Workers() {
         params: {
           search: search || undefined,
           active: activeFilter || undefined,
-          site: siteFilter || undefined,
         },
       })
       .then((res) => setWorkers(res.data))
       .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoading(false));
-  }, [search, activeFilter, siteFilter]);
+  }, [search, activeFilter]);
 
   useEffect(() => {
     const t = setTimeout(load, 250);
@@ -120,17 +113,6 @@ export default function Workers() {
             <option value="false">Inactive</option>
           </select>
         </label>
-        <label className="field">
-          <span>Site</span>
-          <select value={siteFilter} onChange={(e) => setSiteFilter(e.target.value)}>
-            <option value="">All sites</option>
-            {sites.map((s) => (
-              <option key={s._id} value={s._id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
 
       <div className="card">
@@ -145,7 +127,6 @@ export default function Workers() {
                 <tr>
                   <th>Name</th>
                   <th>Role</th>
-                  <th>Site</th>
                   <th>Phone</th>
                   <th className="num">Daily wage</th>
                   <th>Status</th>
@@ -159,7 +140,6 @@ export default function Workers() {
                       <strong>{w.name}</strong>
                     </td>
                     <td className="muted">{w.role}</td>
-                    <td className="muted">{w.site?.name || '—'}</td>
                     <td className="muted">{w.phone || '—'}</td>
                     <td className="num">{formatMoney(w.dailyWage)}</td>
                     <td>
@@ -191,7 +171,6 @@ export default function Workers() {
       {modal && (
         <WorkerModal
           worker={modal._id ? modal : null}
-          sites={sites}
           onClose={() => setModal(null)}
           onSubmit={submit}
         />

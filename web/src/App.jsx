@@ -9,6 +9,7 @@ import Sites from './pages/Sites';
 import Attendance from './pages/Attendance';
 import Payments from './pages/Payments';
 import Reports from './pages/Reports';
+import Dispatches from './pages/Dispatches';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -30,6 +31,7 @@ export default function App() {
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/attendance" element={<Attendance />} />
+        <Route path="/dispatches" element={<Dispatches />} />
         <Route path="/payments" element={<Payments />} />
         <Route path="/workers" element={<Workers />} />
         <Route path="/sites" element={<Sites />} />

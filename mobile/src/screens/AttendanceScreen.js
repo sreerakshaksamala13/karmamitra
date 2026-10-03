@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import client, { errorMessage } from '../api/client';
 import { Button, Card, EmptyState, ErrorText, Loading, StatCard, SuccessText } from '../components/UI';
 import { colors, radius, spacing } from '../theme';
@@ -10,29 +11,41 @@ const SHORT = { present: 'Present', 'half-day': 'Half', absent: 'Absent' };
 
 export default function AttendanceScreen() {
   const [date, setDate] = useState(toDateInput());
+  const [site, setSite] = useState('');
+  const [sites, setSites] = useState([]);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
+  useEffect(() => {
+    client.get('/sites').then((res) => setSites(res.data)).catch(() => {});
+  }, []);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     setMessage('');
     try {
-      const res = await client.get('/attendance/sheet', { params: { date } });
+      const res = await client.get('/attendance/sheet', { params: { date, site: site || undefined } });
       setRows(res.data.rows.map((r) => ({ ...r, status: r.status || 'present' })));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoading(false);
     }
-  }, [date]);
+  }, [date, site]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
   const setStatus = (workerId, status) =>
     setRows((prev) => prev.map((r) => (r.worker._id === workerId ? { ...r, status } : r)));
@@ -55,7 +68,7 @@ export default function AttendanceScreen() {
     setMessage('');
     try {
       const entries = rows.map((r) => ({ worker: r.worker._id, status: r.status, wageRate: r.wageRate }));
-      const res = await client.post('/attendance/bulk', { date, entries });
+      const res = await client.post('/attendance/bulk', { date, site: site || undefined, entries });
       setMessage(`Saved ${res.data.marked} worker(s) for ${date}.`);
       load();
     } catch (err) {
@@ -91,6 +104,18 @@ export default function AttendanceScreen() {
 
       <ErrorText>{error}</ErrorText>
       <SuccessText>{message}</SuccessText>
+
+      <Text style={styles.label}>Site</Text>
+      <View style={styles.sites}>
+        <Pressable onPress={() => setSite('')} style={[styles.siteChip, !site && styles.siteChipActive]}>
+          <Text style={[styles.siteText, !site && styles.siteTextActive]}>All sites</Text>
+        </Pressable>
+        {sites.map((s) => (
+          <Pressable key={s._id} onPress={() => setSite(s._id)} style={[styles.siteChip, site === s._id && styles.siteChipActive]}>
+            <Text style={[styles.siteText, site === s._id && styles.siteTextActive]}>{s.name}</Text>
+          </Pressable>
+        ))}
+      </View>
 
       <View style={styles.statsRow}>
         <StatCard label="Present" value={summary.present} tone="green" />
@@ -180,6 +205,12 @@ const styles = StyleSheet.create({
   },
   dateNav: { padding: spacing.sm },
   dateNavText: { color: colors.primary, fontWeight: '700' },
+  label: { fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 },
+  sites: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.md },
+  siteChip: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  siteChipActive: { borderColor: colors.primary, backgroundColor: '#e5edff' },
+  siteText: { color: colors.muted, fontWeight: '600', fontSize: 13 },
+  siteTextActive: { color: colors.primary },
   dateText: { fontWeight: '800', color: colors.text, fontSize: 16 },
   dateSub: { color: colors.muted, fontSize: 12 },
   statsRow: { flexDirection: 'row' },

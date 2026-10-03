@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import client from '../api/client';
 import StatCard from '../components/StatCard';
 import Spinner from '../components/Spinner';
+import Modal from '../components/Modal';
 import { formatMoney, isPayoutDay, prettyDateTime, toDateInput, weekdayName } from '../utils/format';
 
 export default function Dashboard() {
   const [date, setDate] = useState(toDateInput());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [detail, setDetail] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -24,6 +26,7 @@ export default function Dashboard() {
   if (!data) return <p className="empty">Could not load dashboard.</p>;
 
   const { counts, today, outstanding, thisWeekPaid, recentPayments } = data;
+  const siteDispatches = data.siteDispatches || [];
   const payoutToday = isPayoutDay(date);
 
   return (
@@ -86,6 +89,62 @@ export default function Dashboard() {
           tone="green"
         />
       </div>
+
+      <div className="card" style={{ marginTop: 18 }}>
+        <div className="card-head">
+          <h3>Dispatches by site · {date}</h3>
+          <Link className="btn btn-ghost btn-sm" to="/dispatch">
+            View all
+          </Link>
+        </div>
+        {siteDispatches.length === 0 ? (
+          <p className="empty">No dispatches recorded for this date.</p>
+        ) : (
+          <div className="grid grid-cards">
+            {siteDispatches.map((d) => (
+              <button
+                key={d._id}
+                type="button"
+                className="card"
+                style={{ marginBottom: 0, textAlign: 'left', cursor: 'pointer' }}
+                onClick={() => setDetail(d)}
+              >
+                <div className="card-head">
+                  <h3>{d.site?.name || d.siteName}</h3>
+                  <span className={`badge ${d.collectionStatus === 'paid' ? 'badge-paid' : 'badge-muted'}`}>
+                    {d.collectionStatus === 'paid' ? 'Collected' : 'Unpaid'}
+                  </span>
+                </div>
+                <p style={{ margin: '0 0 4px' }}>
+                  <strong>{d.workers.length}</strong> worker(s): {d.workers.map((w) => w.name).join(', ')}
+                </p>
+                <p className="muted" style={{ margin: 0 }}>
+                  Customer charge: <strong>{formatMoney(d.customerCharge)}</strong>
+                </p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {detail && (
+        <Modal title={detail.site?.name || detail.siteName} onClose={() => setDetail(null)}>
+          <p style={{ marginTop: 0 }}>
+            <strong>Date:</strong> {detail.date}
+          </p>
+          <p>
+            <strong>Workers ({detail.workers.length}):</strong>{' '}
+            {detail.workers.map((w) => `${w.name} (${w.role}, ${formatMoney(w.dailyWage)}/day)`).join(' · ')}
+          </p>
+          <p>
+            <strong>Customer charge:</strong> {formatMoney(detail.customerCharge)}
+          </p>
+          <p>
+            <strong>Status:</strong> {detail.collectionStatus === 'paid' ? 'Collected' : 'Unpaid'}
+            {detail.collectedAt ? ` · ${new Date(detail.collectedAt).toLocaleDateString()}` : ''}
+          </p>
+        </Modal>
+      )}
 
       <div className="card" style={{ marginTop: 18 }}>
         <div className="card-head">

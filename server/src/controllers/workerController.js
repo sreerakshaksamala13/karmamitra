@@ -2,6 +2,7 @@ const Worker = require('../models/Worker');
 const Site = require('../models/Site');
 const Attendance = require('../models/Attendance');
 const Payment = require('../models/Payment');
+const WorkAssignment = require('../models/WorkAssignment');
 const asyncHandler = require('../utils/asyncHandler');
 const ownerFilter = (req) => ({ createdBy: req.user._id });
 
@@ -92,17 +93,19 @@ const deleteWorker = asyncHandler(async (req, res) => {
   const worker = await Worker.findOne({ _id: id, ...ownerFilter(req) });
   if (!worker) return res.status(404).json({ message: 'Worker not found' });
 
-  const [attendanceCount, paymentCount] = await Promise.all([
+  const [attendanceCount, paymentCount, assignmentCount] = await Promise.all([
     Attendance.countDocuments({ worker: id }),
     Payment.countDocuments({ worker: id }),
+    WorkAssignment.countDocuments({ workers: id, createdBy: req.user._id }),
   ]);
 
-  if ((attendanceCount || paymentCount) && req.query.force !== 'true') {
+  if ((attendanceCount || paymentCount || assignmentCount) && req.query.force !== 'true') {
     return res.status(409).json({
       message:
-        'This worker has attendance or payment history. Deactivate instead, or pass force=true to delete everything.',
+        'This worker has attendance, payment, or dispatch history. Deactivate instead, or pass force=true to delete all their records.',
       attendanceCount,
       paymentCount,
+      assignmentCount,
     });
   }
 
@@ -110,6 +113,7 @@ const deleteWorker = asyncHandler(async (req, res) => {
     await Promise.all([
       Attendance.deleteMany({ worker: id }),
       Payment.deleteMany({ worker: id }),
+      WorkAssignment.deleteMany({ workers: id, createdBy: req.user._id }),
     ]);
   }
 

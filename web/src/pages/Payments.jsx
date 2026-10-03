@@ -33,11 +33,11 @@ export default function Payments() {
   const loadPayments = useCallback(() => {
     setLoadingPayments(true);
     client
-      .get('/payments')
+      .get('/payments', { params: { site: site || undefined } })
       .then((res) => setPayments(res.data))
       .catch((err) => setError(errorMessage(err)))
       .finally(() => setLoadingPayments(false));
-  }, []);
+  }, [site]);
 
   useEffect(loadDues, [loadDues]);
   useEffect(loadPayments, [loadPayments]);
@@ -167,7 +167,11 @@ export default function Payments() {
                             {row.worker.role}
                           </div>
                         </td>
-                        <td className="muted">{row.worker.site?.name || '—'}</td>
+                        <td className="muted">
+                          {(row.dayBreakdown || []).length
+                            ? [...new Set(row.dayBreakdown.map((d) => d.site?.name).filter(Boolean))].join(', ') || '—'
+                            : row.worker.site?.name || '—'}
+                        </td>
                         <td className="num">
                           {row.attendanceCount}
                           <div className="muted" style={{ fontSize: 12 }}>
@@ -211,6 +215,7 @@ export default function Payments() {
                   <tr>
                     <th>Worker</th>
                     <th>Period</th>
+                    <th>Worked sites</th>
                     <th className="num">Gross</th>
                     <th className="num">Deduction</th>
                     <th className="num">Net</th>
@@ -228,6 +233,11 @@ export default function Payments() {
                       </td>
                       <td className="muted">
                         {p.fromDate} → {p.toDate}
+                      </td>
+                      <td className="muted" style={{ fontSize: 12 }}>
+                        {(p.attendance || []).length
+                          ? [...new Set(p.attendance.map((a) => (a.site && typeof a.site === 'object' ? a.site.name : a.site)).filter(Boolean))].join(', ') || '—'
+                          : p.worker?.site?.name || '—'}
                       </td>
                       <td className="num">{formatMoney(p.grossAmount)}</td>
                       <td className="num">{formatMoney(p.deduction)}</td>

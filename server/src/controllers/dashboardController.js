@@ -61,6 +61,15 @@ const getDashboard = asyncHandler(async (req, res) => {
     .limit(5)
     .lean();
 
+  // Per-site dispatch cards for the date: site + workers + charge + status.
+  // Used read-only on the dashboards (tap a card to see details in a modal).
+  const WorkAssignment = require('../models/WorkAssignment');
+  const siteDispatches = await WorkAssignment.find({ createdBy: req.user._id, date })
+    .populate('site', 'name location')
+    .populate('workers', 'name role dailyWage')
+    .sort({ createdAt: 1 })
+    .lean();
+
   return res.json({
     date,
     weekStart: startOfWeek(date),
@@ -80,6 +89,7 @@ const getDashboard = asyncHandler(async (req, res) => {
       payments: weekAgg[0]?.count || 0,
     },
     recentPayments,
+    siteDispatches,
   });
 });
 

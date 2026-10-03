@@ -18,7 +18,8 @@ It is a **MERN** stack project with three parts:
 ## 1. What the app does
 
 - **Workers** – name, role (Mason, Helper, …), daily wage, phone, site, ID, notes. Add / edit / deactivate / delete.
-- **Sites** – construction sites with client name and the rate billed to the client.
+- **Sites** – construction sites with client details and a reference billing rate.
+- **Daily dispatch** – select a site first, assign one or more workers with no group-size limit, and enter the negotiated customer charge for that group. Dispatching marks each worker present at that site; their individual wage and weekly payroll stay separate. Track the customer charge as unpaid or collected.
 - **Daily attendance** – open *Attendance*, pick the date, mark each worker **Present / Half day / Absent**, then Save. Wage for the day is computed automatically.
 - **Payments (Wednesday)** – open *Payments → To pay*. It shows exactly how much is owed to every worker (all unpaid days). Tap **Pay**, adjust deduction/bonus/method, and record it.
 - **Update payments** – *Payments → History* lets you **edit** any payment (deduction, bonus, method, status, notes, date) or **reverse** it (which releases those days back to "owed").
@@ -119,6 +120,10 @@ POST   /api/attendance                         # one worker
 POST   /api/attendance/bulk                    { date, entries:[{worker,status,wageRate}] }
 DELETE /api/attendance/:id
 
+GET    /api/assignments?date=YYYY-MM-DD        # daily dispatches and customer collection status
+POST   /api/assignments                        { date, site, workers:[oneOrMoreWorkerIds], customerCharge }
+PATCH  /api/assignments/:id/collection         { status: "paid" | "unpaid", collectedAt? }
+
 GET    /api/payments/dues?to=&site=            # what is owed (Wednesday list)
 GET    /api/payments                           # history
 POST   /api/payments                           { worker, toDate, deduction, bonus, method, status, notes }
@@ -159,7 +164,7 @@ You can also just run it instantly in **Expo Go** with `npm run mobile`.
 karmamitra/
 ├── server/                     # Express API
 │   └── src/
-│       ├── models/             # User, Site, Worker, Attendance, Payment
+│       ├── models/             # User, Site, Worker, Attendance, Payment, WorkAssignment
 │       ├── controllers/        # business logic
 │       ├── routes/             # /api/* endpoints
 │       ├── middleware/         # auth (JWT), error handling
@@ -167,14 +172,14 @@ karmamitra/
 │       └── seed.js             # demo data
 ├── web/                        # React (Vite) dashboard
 │   └── src/
-│       ├── pages/              # Login, Dashboard, Attendance, Payments, Workers, Sites, Reports
+│       ├── pages/              # Login, Dashboard, Attendance, Dispatches, Payments, Workers, Sites, Reports
 │       ├── components/         # Layout, Modal, PaymentModal, WorkerModal, ...
 │       ├── context/            # AuthContext
 │       └── api/client.js       # axios + token
 ├── mobile/                     # Expo (React Native) Android app
 │   ├── App.js                  # navigation (tabs + login)
 │   └── src/
-│       ├── screens/            # Login, Dashboard, Attendance, Payments, Workers, Sites, Reports
+│       ├── screens/            # Login, Dashboard, Attendance, Dispatches, Payments, Workers, Sites, Reports
 │       ├── components/         # UI kit, PaymentModal, WorkerModal
 │       └── api/client.js       # axios + token (AsyncStorage)
 ├── docker-compose.yml          # local MongoDB
