@@ -23,6 +23,8 @@ It is a **MERN** stack project with three parts:
 - **Payments (Wednesday)** – open *Payments → To pay*. It shows exactly how much is owed to every worker (all unpaid days). Tap **Pay**, adjust deduction/bonus/method, and record it.
 - **Update payments** – *Payments → History* lets you **edit** any payment (deduction, bonus, method, status, notes, date) or **reverse** it (which releases those days back to "owed").
 - **Reports** – attendance and wage totals per worker for any date range.
+- **Accounts** – sign up or log in. Each account sees and manages only its own workers, sites, attendance, and payments.
+- New workers default to the **Mason** role; you can change it while adding or editing.
 
 ### How the Wednesday payout works (important)
 
@@ -57,12 +59,14 @@ npm run install:all
 # 2. Start MongoDB in Docker
 npm run db:up
 
-# 3. Create the env file and load demo data
+# 3. Create the env file and optionally load demo data
 cp server/.env.example server/.env
 npm run seed
 ```
 
-The seed prints the login it created:
+`npm run seed` clears the database, including all accounts and business data,
+then creates demo data and prints its login. Skip it to start with an empty
+database and create your own account.
 
 ```
 phone: 9999999999   password: admin123
@@ -95,14 +99,14 @@ and the computer are on the **same Wi-Fi**.
 
 ```
 GET    /api/health
-POST   /api/auth/register         { name, phone, password }   # first run only
+POST   /api/auth/register         { name, phone, password }   # creates an isolated account
 POST   /api/auth/login            { phone, password } -> { token }
 GET    /api/auth/me
 
 GET    /api/dashboard?date=YYYY-MM-DD
 
 GET    /api/workers               ?search=&active=&site=
-POST   /api/workers               { name, role, dailyWage, phone, site, ... }
+POST   /api/workers               { name, role, dailyWage, phone, site, ... } # role defaults to Mason
 PUT    /api/workers/:id
 PATCH  /api/workers/:id/status    { active: false }
 DELETE /api/workers/:id           ?force=true to also delete records
@@ -121,6 +125,10 @@ POST   /api/payments                           { worker, toDate, deduction, bonu
 PUT    /api/payments/:id                       # update payment info
 DELETE /api/payments/:id                       # reverse a payment
 ```
+
+Registration is available whenever you need to create a separate account. Each
+account's records are isolated from other accounts; the demo seed account
+continues to manage the seeded demo records.
 
 All routes except `/api/health` and `/api/auth/*` require an
 `Authorization: Bearer <token>` header.
@@ -196,7 +204,7 @@ CLIENT_ORIGINS=http://localhost:5173
 
 ## 9. Assumptions made (change if needed)
 
-1. Logging in is required before using the app (single owner account).
+1. Each account must log in and can access only its own business records.
 2. A day's wage = `dailyWage × (Present 1 / Half day 0.5 / Absent 0)`.
 3. The pay week is *"everything unpaid up to the pay date"* — no fixed
    Thursday→Wednesday boundary, so late payments still work correctly.

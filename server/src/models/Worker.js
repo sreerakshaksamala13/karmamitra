@@ -5,7 +5,7 @@ const workerSchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     phone: { type: String, trim: true, default: '' },
     // Mason, Helper, Carpenter, Painter, Plumber, Electrician, etc.
-    role: { type: String, trim: true, default: 'Helper' },
+    role: { type: String, trim: true, default: 'Mason' },
     dailyWage: { type: Number, required: true, min: 0, default: 0 },
     site: { type: mongoose.Schema.Types.ObjectId, ref: 'Site', default: null },
     joinDate: { type: Date, default: Date.now },

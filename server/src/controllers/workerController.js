@@ -1,14 +1,16 @@
 const Worker = require('../models/Worker');
+const Site = require('../models/Site');
 const Attendance = require('../models/Attendance');
 const Payment = require('../models/Payment');
 const asyncHandler = require('../utils/asyncHandler');
+const ownerFilter = (req) => ({ createdBy: req.user._id });
 
 /**
  * GET /api/workers?search=&active=&site=
  */
 const listWorkers = asyncHandler(async (req, res) => {
   const { search = '', active, site } = req.query;
-  const filter = {};
+  const filter = ownerFilter(req);
 
   if (search) filter.name = { $regex: search, $options: 'i' };
   if (active === 'true') filter.active = true;
@@ -23,7 +25,10 @@ const listWorkers = asyncHandler(async (req, res) => {
  * GET /api/workers/:id
  */
 const getWorker = asyncHandler(async (req, res) => {
-  const worker = await Worker.findById(req.params.id).populate('site', 'name location');
+  const worker = await Worker.findOne({ _id: req.params.id, ...ownerFilter(req) }).populate(
+    'site',
+    'name location'
+  );
   if (!worker) return res.status(404).json({ message: 'Worker not found' });
   return res.json(worker);
 });
@@ -32,7 +37,12 @@ const getWorker = asyncHandler(async (req, res) => {
  * POST /api/workers
  */
 const createWorker = asyncHandler(async (req, res) => {
-  const worker = await Worker.create({ ...req.body, createdBy: req.user._id });
+  const payload = { ...req.body, createdBy: req.user._id };
+  if (!payload.role) payload.role = 'Mason';
+  if (payload.site && !(await Site.findOne({ _id: payload.site, ...ownerFilter(req) }))) {
+    return res.status(404).json({ message: 'Site not found' });
+  }
+  const worker = await Worker.create(payload);
   return res.status(201).json(await worker.populate('site', 'name location'));
 });
 
@@ -40,10 +50,21 @@ const createWorker = asyncHandler(async (req, res) => {
  * PUT /api/workers/:id
  */
 const updateWorker = asyncHandler(async (req, res) => {
-  const worker = await Worker.findByIdAndUpdate(req.params.id, req.body, {
-    new: true,
-    runValidators: true,
-  }).populate('site', 'name location');
+  const editable = ['name', 'phone', 'role', 'dailyWage', 'site', 'joinDate', 'active', 'address', 'idNumber', 'notes'];
+  const updates = Object.fromEntries(
+    editable.filter((field) => req.body[field] !== undefined).map((field) => [field, req.body[field]])
+  );
+  if (updates.site && !(await Site.findOne({ _id: updates.site, ...ownerFilter(req) }))) {
+    return res.status(404).json({ message: 'Site not found' });
+  }
+  const worker = await Worker.findOneAndUpdate(
+    { _id: req.params.id, ...ownerFilter(req) },
+    updates,
+    {
+      new: true,
+      runValidators: true,
+    }
+  ).populate('site', 'name location');
   if (!worker) return res.status(404).json({ message: 'Worker not found' });
   return res.json(worker);
 });
@@ -53,8 +74,8 @@ const updateWorker = asyncHandler(async (req, res) => {
  * Soft delete / deactivate a worker without losing attendance history.
  */
 const setWorkerStatus = asyncHandler(async (req, res) => {
-  const worker = await Worker.findByIdAndUpdate(
-    req.params.id,
+  const worker = await Worker.findOneAndUpdate(
+    { _id: req.params.id, ...ownerFilter(req) },
     { active: Boolean(req.body.active) },
     { new: true }
   );
@@ -68,6 +89,9 @@ const setWorkerStatus = asyncHandler(async (req, res) => {
  */
 const deleteWorker = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const worker = await Worker.findOne({ _id: id, ...ownerFilter(req) });
+  if (!worker) return res.status(404).json({ message: 'Worker not found' });
+
   const [attendanceCount, paymentCount] = await Promise.all([
     Attendance.countDocuments({ worker: id }),
     Payment.countDocuments({ worker: id }),
@@ -89,8 +113,7 @@ const deleteWorker = asyncHandler(async (req, res) => {
     ]);
   }
 
-  const worker = await Worker.findByIdAndDelete(id);
-  if (!worker) return res.status(404).json({ message: 'Worker not found' });
+  await worker.deleteOne();
   return res.json({ message: 'Worker deleted', id });
 });
 

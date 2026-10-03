@@ -4,7 +4,7 @@ import Modal from './Modal';
 const EMPTY = {
   name: '',
   phone: '',
-  role: 'Helper',
+  role: 'Mason',
   dailyWage: 500,
   site: '',
   address: '',

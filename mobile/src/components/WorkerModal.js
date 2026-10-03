@@ -10,7 +10,7 @@ export default function WorkerModal({ visible, worker, sites, onClose, onSubmit 
   const [form, setForm] = useState({
     name: worker?.name || '',
     phone: worker?.phone || '',
-    role: worker?.role || 'Helper',
+    role: worker?.role || 'Mason',
     dailyWage: String(worker?.dailyWage ?? 500),
     site: worker?.site?._id || worker?.site || '',
     address: worker?.address || '',

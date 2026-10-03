@@ -4,6 +4,7 @@ const Site = require('../models/Site');
 const Attendance = require('../models/Attendance');
 const Payment = require('../models/Payment');
 const asyncHandler = require('../utils/asyncHandler');
+const { getOwnedWorkerIds } = require('../utils/tenant');
 const { todayString } = require('./attendanceHelpers');
 
 function startOfWeek(dateStr) {
@@ -21,21 +22,22 @@ function startOfWeek(dateStr) {
  */
 const getDashboard = asyncHandler(async (req, res) => {
   const date = req.query.date || todayString();
+  const workerIds = await getOwnedWorkerIds(req.user._id);
 
   const [activeWorkers, totalWorkers, activeSites, todayRows, unpaidAgg, weekAgg] =
     await Promise.all([
-      Worker.countDocuments({ active: true }),
-      Worker.countDocuments({}),
-      Site.countDocuments({ active: true }),
-      Attendance.find({ date }).lean(),
+      Worker.countDocuments({ createdBy: req.user._id, active: true }),
+      Worker.countDocuments({ createdBy: req.user._id }),
+      Site.countDocuments({ createdBy: req.user._id, active: true }),
+      Attendance.find({ date, worker: { $in: workerIds } }).lean(),
       Attendance.aggregate([
-        { $match: { paidInPayment: null } },
+        { $match: { worker: { $in: workerIds }, paidInPayment: null } },
         { $group: { _id: null, total: { $sum: '$wageAmount' }, days: { $sum: 1 } } },
       ]),
       (() => {
         const from = new Date(`${startOfWeek(date)}T00:00:00.000`);
         return Payment.aggregate([
-          { $match: { paidAt: { $gte: from } } },
+          { $match: { createdBy: req.user._id, paidAt: { $gte: from } } },
           { $group: { _id: null, total: { $sum: '$netAmount' }, count: { $sum: 1 } } },
         ]);
       })(),
@@ -53,7 +55,7 @@ const getDashboard = asyncHandler(async (req, res) => {
   };
 
   // Recent payments for the activity list.
-  const recentPayments = await Payment.find({})
+  const recentPayments = await Payment.find({ createdBy: req.user._id })
     .populate('worker', 'name role')
     .sort({ paidAt: -1 })
     .limit(5)

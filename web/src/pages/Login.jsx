@@ -91,7 +91,7 @@ export default function Login() {
           }}
         >
           {mode === 'login'
-            ? 'First time here? Create the owner account'
+            ? 'New here? Create an account'
             : 'Already have an account? Log in'}
         </button>
 

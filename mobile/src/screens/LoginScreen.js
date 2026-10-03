@@ -96,7 +96,7 @@ export default function LoginScreen() {
           >
             <Text style={styles.switchText}>
               {mode === 'login'
-                ? 'First time here? Create the owner account'
+                ? 'New here? Create an account'
                 : 'Already have an account? Log in'}
             </Text>
           </Pressable>

@@ -2,7 +2,9 @@ const mongoose = require('mongoose');
 const Payment = require('../models/Payment');
 const Attendance = require('../models/Attendance');
 const Worker = require('../models/Worker');
+const Site = require('../models/Site');
 const asyncHandler = require('../utils/asyncHandler');
+const { getOwnedWorkerIds } = require('../utils/tenant');
 const { todayString, assertDate } = require('./attendanceHelpers');
 
 /**
@@ -14,7 +16,11 @@ const getDues = asyncHandler(async (req, res) => {
   const to = req.query.to || todayString();
   assertDate(to, 'to');
 
-  const match = { paidInPayment: null, date: { $lte: to } };
+  const match = {
+    worker: { $in: await getOwnedWorkerIds(req.user._id) },
+    paidInPayment: null,
+    date: { $lte: to },
+  };
   if (req.query.site) match.site = new mongoose.Types.ObjectId(req.query.site);
 
   const grouped = await Attendance.aggregate([
@@ -34,7 +40,7 @@ const getDues = asyncHandler(async (req, res) => {
   ]);
 
   const workerIds = grouped.map((g) => g._id);
-  const workerFilter = { _id: { $in: workerIds } };
+  const workerFilter = { _id: { $in: workerIds }, createdBy: req.user._id };
   if (req.query.site) workerFilter.site = req.query.site;
   const workers = await Worker.find(workerFilter).populate('site', 'name').lean();
   const workerMap = workers.reduce((acc, w) => ({ ...acc, [String(w._id)]: w }), {});
@@ -78,7 +84,7 @@ const createPayment = asyncHandler(async (req, res) => {
   assertDate(toDate, 'toDate');
   if (fromDate) assertDate(fromDate, 'fromDate');
 
-  const workerDoc = await Worker.findById(worker);
+  const workerDoc = await Worker.findOne({ _id: worker, createdBy: req.user._id });
   if (!workerDoc) return res.status(404).json({ message: 'Worker not found' });
 
   const match = { worker, paidInPayment: null, date: { $lte: toDate } };
@@ -122,7 +128,7 @@ const createPayment = asyncHandler(async (req, res) => {
  */
 const listPayments = asyncHandler(async (req, res) => {
   const { worker, status, from, to, site } = req.query;
-  const filter = {};
+  const filter = { createdBy: req.user._id };
   if (worker) filter.worker = worker;
   if (status) filter.status = status;
 
@@ -137,7 +143,9 @@ const listPayments = asyncHandler(async (req, res) => {
   }
 
   if (site) {
-    const workerIds = await Worker.find({ site }).distinct('_id');
+    const siteExists = await Site.exists({ _id: site, createdBy: req.user._id });
+    if (!siteExists) return res.status(404).json({ message: 'Site not found' });
+    const workerIds = await Worker.find({ site, createdBy: req.user._id }).distinct('_id');
     filter.worker = { $in: workerIds };
   }
 
@@ -151,7 +159,7 @@ const listPayments = asyncHandler(async (req, res) => {
  * GET /api/payments/:id
  */
 const getPayment = asyncHandler(async (req, res) => {
-  const payment = await Payment.findById(req.params.id)
+  const payment = await Payment.findOne({ _id: req.params.id, createdBy: req.user._id })
     .populate('worker', 'name role phone site dailyWage')
     .populate('attendance', 'date status wageRate wageAmount');
   if (!payment) return res.status(404).json({ message: 'Payment not found' });
@@ -164,7 +172,7 @@ const getPayment = asyncHandler(async (req, res) => {
  * or even the gross amount. Net is always recomputed.
  */
 const updatePayment = asyncHandler(async (req, res) => {
-  const payment = await Payment.findById(req.params.id);
+  const payment = await Payment.findOne({ _id: req.params.id, createdBy: req.user._id });
   if (!payment) return res.status(404).json({ message: 'Payment not found' });
 
   const editable = ['deduction', 'bonus', 'method', 'status', 'notes', 'grossAmount'];
@@ -183,7 +191,7 @@ const updatePayment = asyncHandler(async (req, res) => {
  * Reverses a payment and releases its days back to "unpaid".
  */
 const deletePayment = asyncHandler(async (req, res) => {
-  const payment = await Payment.findById(req.params.id);
+  const payment = await Payment.findOne({ _id: req.params.id, createdBy: req.user._id });
   if (!payment) return res.status(404).json({ message: 'Payment not found' });
 
   await Attendance.updateMany(

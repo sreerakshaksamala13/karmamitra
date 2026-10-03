@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 const Attendance = require('../models/Attendance');
 const Worker = require('../models/Worker');
+const Site = require('../models/Site');
 const asyncHandler = require('../utils/asyncHandler');
+const { getOwnedWorkerIds } = require('../utils/tenant');
 const { assertDate, todayString, upsertAttendance } = require('./attendanceHelpers');
 
 /**
@@ -12,9 +14,12 @@ const listAttendance = asyncHandler(async (req, res) => {
   const date = req.query.date || todayString();
   assertDate(date);
 
-  const filter = { date };
+  const workerIds = await getOwnedWorkerIds(req.user._id);
+  const filter = { date, worker: { $in: workerIds } };
   if (req.query.site) filter.site = req.query.site;
-  if (req.query.worker) filter.worker = req.query.worker;
+  if (req.query.worker) {
+    filter.worker = { $in: workerIds, $eq: new mongoose.Types.ObjectId(req.query.worker) };
+  }
 
   const rows = await Attendance.find(filter)
     .populate('worker', 'name role dailyWage phone active')
@@ -33,7 +38,7 @@ const getDailySheet = asyncHandler(async (req, res) => {
   const date = req.query.date || todayString();
   assertDate(date);
 
-  const workerFilter = { active: true };
+  const workerFilter = { active: true, createdBy: req.user._id };
   if (req.query.site) workerFilter.site = req.query.site;
 
   const workers = await Worker.find(workerFilter)
@@ -83,8 +88,11 @@ const markAttendance = asyncHandler(async (req, res) => {
   const { worker, date, status, wageRate, site, notes } = req.body;
   assertDate(date);
 
-  const workerDoc = await Worker.findById(worker);
+  const workerDoc = await Worker.findOne({ _id: worker, createdBy: req.user._id });
   if (!workerDoc) return res.status(404).json({ message: 'Worker not found' });
+  if (site && !(await Site.findOne({ _id: site, createdBy: req.user._id }))) {
+    return res.status(404).json({ message: 'Site not found' });
+  }
 
   const record = await upsertAttendance({
     workerDoc,
@@ -112,7 +120,13 @@ const bulkMarkAttendance = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'entries must be a non-empty array' });
   }
 
-  const workers = await Worker.find({ _id: { $in: entries.map((e) => e.worker) } });
+  if (site && !(await Site.findOne({ _id: site, createdBy: req.user._id }))) {
+    return res.status(404).json({ message: 'Site not found' });
+  }
+  const workers = await Worker.find({
+    _id: { $in: entries.map((e) => e.worker) },
+    createdBy: req.user._id,
+  });
   const workerMap = workers.reduce((acc, w) => ({ ...acc, [String(w._id)]: w }), {});
 
   const rows = [];
@@ -151,7 +165,10 @@ const bulkMarkAttendance = asyncHandler(async (req, res) => {
  * DELETE /api/attendance/:id
  */
 const deleteAttendance = asyncHandler(async (req, res) => {
-  const record = await Attendance.findById(req.params.id);
+  const record = await Attendance.findOne({
+    _id: req.params.id,
+    worker: { $in: await getOwnedWorkerIds(req.user._id) },
+  });
   if (!record) return res.status(404).json({ message: 'Attendance not found' });
   if (record.paidInPayment) {
     return res.status(409).json({ message: 'Cannot delete a day that is already paid.' });
@@ -171,7 +188,10 @@ const attendanceSummary = asyncHandler(async (req, res) => {
   assertDate(to, 'to');
 
   const match = { date: { $gte: from, $lte: to } };
-  if (req.query.worker) match.worker = new mongoose.Types.ObjectId(req.query.worker);
+  const workerIds = await getOwnedWorkerIds(req.user._id);
+  match.worker = req.query.worker
+    ? { $in: workerIds, $eq: new mongoose.Types.ObjectId(req.query.worker) }
+    : { $in: workerIds };
   if (req.query.site) match.site = new mongoose.Types.ObjectId(req.query.site);
 
   const grouped = await Attendance.aggregate([
@@ -189,9 +209,10 @@ const attendanceSummary = asyncHandler(async (req, res) => {
     },
   ]);
 
-  const workers = await Worker.find({ _id: { $in: grouped.map((g) => g._id) } }).select(
-    'name role dailyWage active'
-  );
+  const workers = await Worker.find({
+    _id: { $in: grouped.map((g) => g._id) },
+    createdBy: req.user._id,
+  }).select('name role dailyWage active');
   const workerMap = workers.reduce((acc, w) => ({ ...acc, [String(w._id)]: w }), {});
 
   const rows = grouped

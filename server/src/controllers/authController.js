@@ -10,15 +10,10 @@ function signToken(user) {
 
 /**
  * POST /api/auth/register
- * First run bootstrap. Once an owner exists, registration requires a token.
+ * Create an account. Each account owns an isolated set of business records.
  */
 const register = asyncHandler(async (req, res) => {
   const { name, phone, password } = req.body;
-
-  const ownerExists = await User.estimatedDocumentCount();
-  if (ownerExists > 0 && !req.user) {
-    return res.status(403).json({ message: 'Registration is closed. Please sign in.' });
-  }
 
   const exists = await User.findOne({ phone });
   if (exists) {
