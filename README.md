@@ -200,10 +200,13 @@ JWT_EXPIRES_IN=30d
 CLIENT_ORIGINS=http://localhost:5173
 ```
 
-- **Deploying?** Set `MONGO_URI` to your MongoDB Atlas URI, set a strong
-  `JWT_SECRET`, and add your web URL to `CLIENT_ORIGINS`.
-- **Mobile API URL** is auto-detected in development. For a published app, set
-  `expo.extra.apiUrl` in `mobile/app.json` (e.g. `https://api.example.com/api`).
+- **Deploying?** Follow [DEPLOY.md](DEPLOY.md) — it provisions MongoDB Atlas
+  (M0) and both Render services from [`render.yaml`](render.yaml) for free.
+  Set `MONGO_URI` to your Atlas URI, a strong `JWT_SECRET`, and add your web
+  URL to `CLIENT_ORIGINS`.
+- **Mobile API URL** is auto-detected in development. Published builds read
+  `EXPO_PUBLIC_API_URL` (wired up in `mobile/eas.json`); alternatively set
+  `expo.extra.apiUrl` in `mobile/app.json`.
 
 ---
 

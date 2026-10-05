@@ -7,8 +7,9 @@ import Constants from 'expo-constants';
  * dev server already knows your computer's LAN IP. We reuse that IP so the
  * phone can reach the API without any manual configuration.
  *
- * If you deploy the API somewhere public, set `expo.extra.apiUrl` in
- * app.json (e.g. "https://api.example.com/api").
+ * For a deployed API, set `EXPO_PUBLIC_API_URL` (the EAS build profiles in
+ * eas.json already do this) or `expo.extra.apiUrl` in app.json
+ * (e.g. "https://api.example.com/api").
  */
 export const API_PORT = 5005;
 
@@ -24,4 +25,8 @@ function guessFromExpo() {
 }
 
 export const API_URL =
-  Constants.expoConfig?.extra?.apiUrl || guessFromExpo() || `http://localhost:${API_PORT}/api`;
+  process.env.EXPO_PUBLIC_API_URL ||
+  Constants.expoConfig?.extra?.apiUrl ||
+  guessFromExpo() ||
+  `http://localhost:${API_PORT}/api`;
+
