@@ -5,6 +5,7 @@ import client, { errorMessage } from '../api/client';
 import { Badge, Button, Card, EmptyState, ErrorText, Field, Loading } from '../components/UI';
 import { colors, radius, spacing } from '../theme';
 import { formatMoney } from '../utils/format';
+import ContactPicker from '../components/ContactPicker';
 
 function SiteForm({ site, onClose, onSubmit }) {
   const isEdit = Boolean(site?._id);
@@ -35,6 +36,14 @@ function SiteForm({ site, onClose, onSubmit }) {
         <View style={styles.sheet}>
           <ScrollView keyboardShouldPersistTaps="handled">
             <Text style={styles.sheetTitle}>{isEdit ? `Edit ${site.name}` : 'Add site'}</Text>
+            <ContactPicker
+              label="Add from contacts"
+              subtitle="Takes the client name and phone from a selected contact"
+              onContactPicked={({ name, phone }) => {
+                set('clientName')(name);
+                set('clientPhone')(phone);
+              }}
+            />
             <Field label="Site name" value={form.name} onChangeText={set('name')} placeholder="e.g. Sunrise Apartments" />
             <Field label="Location" value={form.location} onChangeText={set('location')} placeholder="Area / city" />
             <Field label="Client name" value={form.clientName} onChangeText={set('clientName')} />

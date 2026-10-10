@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { Button, ErrorText, Field } from './UI';
+import ContactPicker from './ContactPicker';
 import { colors, radius, spacing } from '../theme';
 
 const ROLES = ['Mason', 'Helper', 'Carpenter', 'Painter', 'Plumber', 'Electrician', 'Other'];
@@ -49,6 +50,12 @@ export default function WorkerModal({ visible, worker, onClose, onSubmit }) {
           <ScrollView keyboardShouldPersistTaps="handled">
             <Text style={styles.title}>{isEdit ? `Edit ${worker.name}` : 'Add worker'}</Text>
             <ErrorText>{error}</ErrorText>
+
+            <ContactPicker
+              label="Add from contacts"
+              subtitle="Takes the name and mobile number from a selected contact"
+              onContactPicked={({ name, phone }) => set('name')(name)}
+            />
 
             <Field label="Full name" value={form.name} onChangeText={set('name')} placeholder="e.g. Ravi Kumar" />
             <Field label="Phone" value={form.phone} onChangeText={set('phone')} keyboardType="phone-pad" placeholder="Optional" />
