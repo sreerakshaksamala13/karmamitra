@@ -5,28 +5,27 @@
 #
 # MongoDB Atlas (M0) is provisioned separately — see DEPLOY.md.
 # Deploy: Render Dashboard → New → Blueprint → pick this repo.
-
+# Exported from Render on 2026-10-11T15:21:07Z
+version: "1"
 services:
-  # ---------- API (Express + MongoDB Atlas) ----------
-  - type: web
-    runtime: node
-    name: karmamitra-api
-    region: oregon
-    plan: free
-    rootDir: server
-    # No build step needed; Render installs dependencies from package-lock.json.
-    startCommand: npm start
-    healthCheckPath: /api/health
-    envVars:
-      - key: NODE_ENV
-        value: production
-      # Render prompts for these two secrets when the Blueprint is created.
-      - key: MONGO_URI
-        sync: false
-      - key: JWT_SECRET
-        sync: false
-      # Exact browser origin allowed by CORS (must match the Vercel URL).
-      - key: CLIENT_ORIGINS
-        value: https://karmamita.vercel.app
+- type: web
+  name: karmamitra-api
+  runtime: node
+  repo: https://github.com/sreerakshaksamala13/karmamitra
+  plan: free
+  envVars:
+  - key: CLIENT_ORIGINS
+    sync: false
+  - key: JWT_SECRET
+    sync: false
+  - key: MONGO_URI
+    sync: false
+  - key: NODE_ENV
+    sync: false
+  region: oregon
+  startCommand: npm start
+  healthCheckPath: /api/health
+  autoDeployTrigger: commit
+  rootDir: server
 
 
