@@ -7,21 +7,21 @@ End-to-end guide for running the whole stack without paying anything.
 | Piece | Host | Free-tier behavior |
 |---|---|---|
 | API (Express) | Render **Web Service** `karmamitra-api` | sleeps after ~15 min idle |
-| Web (Vite React) | Render **Static Site** `karmamitra-web` | never sleeps |
+| Web (Vite React) | Vercel **Static Site** `your-app.vercel.app` | never sleeps |
 | Database | MongoDB **Atlas M0** | 512 MB storage |
 | Mobile | **Expo EAS Build** → Android APK | limited free builds/month |
 
 Both Render resources are declared in [`render.yaml`](render.yaml) at the repo
-root (a Render *Blueprint*), so they deploy together in one flow.
+root (a Render *Blueprint*), so the API deploys together in one flow.
 
-Expected URLs (Render derives them from the service names):
+Expected URLs:
 
-- API: `https://karmamitra-api.onrender.com`
-- Web: `https://karmamitra-web.onrender.com`
+- API: `https://karmamita.onrender.com` (your service name)
+- Web: `https://karmamita.vercel.app`
 
-> If Render assigns a different subdomain (name already taken), update
+> If a service assigns a different subdomain (name already taken), update
 > `CLIENT_ORIGINS` on the API and `VITE_API_URL` on the static site, then
-> redeploy both — see [Troubleshooting](#troubleshooting).
+> redeploy that service — see [Troubleshooting](#troubleshooting).
 
 ## 1. Push to GitHub
 
@@ -47,26 +47,29 @@ mongodb+srv://USER:PASS@cluster0.xxxxx.mongodb.net/karmamitra?retryWrites=true&w
 
 Keep this string — Render prompts for it next.
 
-## 3. Deploy both Render services (one-time)
+## 3. Deploy the API (Render)
 
 1. https://dashboard.render.com → **New +** → **Blueprint**.
 2. Connect GitHub → select the `karmamitra` repo. Render reads `render.yaml`
-   and shows both services.
+   and shows the API service (Node.js + Express).
 3. When prompted, fill in:
    - **MONGO_URI** — the Atlas string from step 2
    - **JWT_SECRET** — a long random string, e.g. `openssl rand -hex 32`
-4. Click **Apply / Create Blueprint** and wait for both builds.
+4. Click **Apply / Create Blueprint** and wait for the build to finish.
+
+> `render.yaml` now declares **only the API**. The web app is deployed to
+> Vercel in the next section.
 
 ## 4. Verify
 
 ```bash
-curl https://karmamitra-api.onrender.com/api/health
+curl https://karmamita.onrender.com/api/health
 # -> {"status":"ok","time":"..."}
 ```
 
-Open `https://karmamitra-web.onrender.com`, register, log in, create a worker.
+Open `https://karmamita.vercel.app`, register, log in, create a worker.
 In DevTools → Network you should see requests going to
-`https://karmamitra-api.onrender.com/api/...`.
+`https://karmamita.onrender.com/api/...`.
 
 > **Cold starts:** the free API sleeps after ~15 min without traffic; the first
 > request after idle takes 30–60 s. Render's health check pings
@@ -78,7 +81,7 @@ In DevTools → Network you should see requests going to
 # create server/.env (gitignored) containing:
 #   MONGO_URI=mongodb+srv://.../karmamitra?retryWrites=true&w=majority
 #   JWT_SECRET=...
-npm run seed
+npm --prefix server run seed
 ```
 
 ## 6. Mobile app (Expo EAS)
